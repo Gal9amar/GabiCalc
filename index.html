@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="he">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מחשבון מע"מ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            direction: rtl;
+            text-align: center;
+            margin: 20px;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            font-size: 30px;
+            margin: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-sizing: border-box;
+        }
+
+        .result,
+        .history {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .history {
+            border-top: 1px solid #000;
+            padding-top: 20px;
+            text-align: right;
+            font-size: 30px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .history-item span {
+            display: block;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .delete-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .add-calc-btn {
+            background-color: green;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .calc-input {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .summary {
+            font-weight: bold;
+        }
+
+        hr {
+            border: 0;
+            height: 2px;
+            background-color: #000000;
+            margin: 10px 0;
+            width: 100%;
+        }
+
+        @media (max-width: 600px) {
+            .history-item span {
+                margin-bottom: 10px;
+                text-align: right;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>מחשבון מע"מ</h1>
+
+    <label for="amount">הכנס סכום:</label><br>
+    <input type="number" id="amount" placeholder="₪0.00"><br>
+
+    <button onclick="calculateAndSaveVAT()">חשב מע"מ</button>
+
+    <div class="result">
+        <p>הסכום פחות 17%: <span id="amountExVAT">₪0.00</span></p>
+        <p>17% מהסכום: <span id="vatAmount">₪0.00</span></p>
+    </div>
+
+    <div class="history">
+        <h2>תוצאות חלוקה</h2>
+        <div id="historyList"></div>
+        <div class="summary" id="totalSummary">סיכום:<br>נהג: ₪0.00<br>גבי: ₪0.00</div>
+        <button id="deleteAllButton" class="delete-btn" onclick="deleteAll()">מחק הכל</button>
+    </div>
+
+    <button onclick="sendToWhatsApp()">שלח לוואטסאפ</button>
+
+    <script>
+        var count = 0;
+        var totalDriver1 = 0; // סכום מצטבר עבור נהג
+        var totalDriver2 = 0; // סכום מצטבר עבור גבי
+
+        // פונקציית חישוב ושמירת מע"מ
+        function calculateAndSaveVAT() {
+            var amount = parseFloat(document.getElementById('amount').value) || 0;
+            var vat = amount * 0.17;
+            var amountExVAT = amount - vat;
+            var halfAmountExVAT = amountExVAT / 2;
+
+            document.getElementById('vatAmount').innerText = '₪' + vat.toFixed(2);
+            document.getElementById('amountExVAT').innerText = '₪' + amountExVAT.toFixed(2);
+
+            saveResult(amount, vat, amountExVAT, halfAmountExVAT);
+        }
+
+        // פונקציה לשמירת התוצאה להיסטוריה
+        function saveResult(amount, vat, amountExVAT, halfAmountExVAT) {
+            count++;
+
+            // יצירת אלמנט לתצוגת התוצאה בהיסטוריה
+            var historyItem = document.createElement('div');
+            historyItem.classList.add('history-item');
+
+            var resultText = document.createElement('span');
+            resultText.innerHTML = `${count}.<br>סכום: ₪${amount.toFixed(2)}<br>17%: ₪${vat.toFixed(2)}<br>אחרי מע"מ: ₪${amountExVAT.toFixed(2)}<br>חלוקה:<br>נהג: ₪${halfAmountExVAT.toFixed(2)}<br>גבי: ₪${halfAmountExVAT.toFixed(2)}`;
+
+            // כפתור סכום שנוסף לחישוב
+            var addCalcButton = document.createElement('button');
+            addCalcButton.classList.add('add-calc-btn');
+            addCalcButton.innerText = 'הוספת סכום';
+
+            var calcInputDiv = document.createElement('div');
+            calcInputDiv.classList.add('calc-input');
+
+            var calcInput = document.createElement('input');
+            calcInput.type = 'number';
+            calcInput.placeholder = 'הכנס סכום נוסף';
+
+            var addButton = document.createElement('button');
+            addButton.innerText = 'הוסף';
+            addButton.onclick = function () {
+                var additionalAmount = parseFloat(calcInput.value) || 0;
+                var halfAdditional = additionalAmount / 2;
+
+                // עדכון הסכום המצטבר לכל נהג
+                totalDriver1 += halfAdditional;
+                totalDriver2 += halfAdditional;
+
+                // הצגת התוצאה של הסכום הנוסף בהיסטוריה
+                var additionalResultText = document.createElement('span');
+                additionalResultText.innerHTML = `סכום שנוסף: ₪${additionalAmount.toFixed(2)}<br>נהג: ₪${halfAdditional.toFixed(2)}<br>גבי: ₪${halfAdditional.toFixed(2)}`;
+                historyItem.appendChild(additionalResultText);
+
+                // עדכון הסיכום הכולל
+                updateTotalSummary();
+
+                // ניקוי השדה ונסגור אותו
+                calcInput.value = '';
+                calcInputDiv.style.display = 'none';
+            };
+
+            calcInputDiv.appendChild(calcInput);
+            calcInputDiv.appendChild(addButton);
+
+            addCalcButton.onclick = function () {
+                calcInputDiv.style.display = 'block';
+                calcInput.value = ''; // ניקוי השדה
+            };
+
+            // הוספת הטקסט וכפתור ההוספה לאלמנט ההיסטוריה
+            historyItem.appendChild(resultText);
+            historyItem.appendChild(addCalcButton);
+            historyItem.appendChild(calcInputDiv);
+
+            // הוספת קו תחתון
+            var line = document.createElement('hr');
+            historyItem.appendChild(line);
+
+            // כפתור מחיקה
+            var deleteButton = document.createElement('button');
+            deleteButton.classList.add('delete-btn');
+            deleteButton.innerText = 'מחק';
+            deleteButton.onclick = function () {
+                historyItem.remove();
+                updateDeleteButtonVisibility(); // עדכון נראות כפתור המחיקה
+                updateTotalSummary(); // עדכון הסיכום הכולל
+            };
+
+            historyItem.appendChild(deleteButton);
+
+            // הוספת התוצאה להיסטוריית החישובים
+            document.getElementById('historyList').appendChild(historyItem);
+            updateDeleteButtonVisibility(); // עדכון נראות כפתור המחיקה
+            updateTotalSummary(); // עדכון הסיכום הכולל
+        }
+
+        function updateTotalSummary() {
+            const totalSummary = document.getElementById('totalSummary');
+            totalSummary.innerHTML = `סיכום:<br>נהג: ₪${totalDriver1.toFixed(2)}<br>גבי: ₪${totalDriver2.toFixed(2)}`;
+        }
+
+        function updateDeleteButtonVisibility() {
+            const deleteAllButton = document.getElementById('deleteAllButton');
+            const historyList = document.getElementById('historyList');
+            // אם יש פריטים בהיסטוריה, להראות את כפתור המחיקה
+            deleteAllButton.style.display = historyList.childElementCount > 0 ? 'block' : 'none';
+        }
+
+        function deleteAll() {
+            document.getElementById('historyList').innerHTML = ''; // מחיקת כל התוכן מההיסטוריה
+            totalDriver1 = 0; // איפוס הסכום המצטבר עבור נהג
+            totalDriver2 = 0; // איפוס הסכום המצטבר עבור גבי
+            updateTotalSummary(); // עדכון הסיכום הכולל
+            updateDeleteButtonVisibility(); // עדכון נראות כפתור המחיקה
+        }
+
+        function sendToWhatsApp() {
+            let message = "היסטוריית חישובים:\n";
+            const historyItems = document.querySelectorAll('.history-item');
+
+            // עובר על כל פרטי ההיסטוריה ומוסיף אותם להודעה
+            historyItems.forEach(item => {
+                const resultText = item.innerText; // אוסף את כל הטקסט מהאלמנט של ההיסטוריה
+                message += `${resultText}\n\n`; // הוספת פרטי החישוב להודעה
+            });
+
+            // הוספת הסיכום הכולל להודעה
+            message += `סיכום סכומים נוספים:\nנהג: ₪${totalDriver1.toFixed(2)}\nגבי: ₪${totalDriver2.toFixed(2)}`;
+
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+            window.open(whatsappUrl, '_blank');
+        }
+    </script>
+
+</body>
+
+</html>
